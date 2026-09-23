@@ -1,0 +1,131 @@
+load("@bazel_skylib//rules:expand_template.bzl", "expand_template")
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
+load(":coal_test.bzl", "coal_test")
+
+package(default_visibility = ["//visibility:private"])
+
+licenses(["notice"])  # BSD-3-Clause
+
+# ---------------------------------------------------------------------------
+# Test resources
+#
+# Mirrors the CONFIG_FILES(fcl_resources/config.h) call in test/CMakeLists.txt,
+# which expands fcl_resources/config.h.in into fcl_resources/config.h with
+# TEST_RESOURCES_DIR pointing at the fcl_resources directory. Bazel test
+# binaries are run with their working directory set to the runfiles root of
+# the test's own repository, so a workspace-relative path resolves correctly
+# there without needing an absolute, non-hermetic path.
+# ---------------------------------------------------------------------------
+
+expand_template(
+    name = "gen_fcl_resources_config_hh",
+    out = "fcl_resources/config.h",
+    substitutions = {
+        "@PROJECT_SOURCE_DIR@": ".",
+    },
+    template = "fcl_resources/config.h.in",
+)
+
+filegroup(
+    name = "fcl_resources_data",
+    srcs = glob(
+        ["fcl_resources/**"],
+        exclude = [
+            "fcl_resources/config.h.in",
+            "fcl_resources/config.h",
+        ],
+    ),
+)
+
+# ---------------------------------------------------------------------------
+# Shared test utility library (test/utility.{h,cpp} in CMake).
+# ---------------------------------------------------------------------------
+
+cc_library(
+    name = "utility",
+    srcs = ["utility.cpp"],
+    hdrs = ["utility.h"],
+    deps = [
+        "//:coal",
+        "@boost.filesystem",
+    ],
+)
+
+# ---------------------------------------------------------------------------
+# Unit tests (Boost.Test, "included" header-only variant). One target per
+# add_coal_test() call in test/CMakeLists.txt.
+#
+# Not ported: `octree` (only meaningful with COAL_HAS_OCTOMAP, off by default,
+# see BUILD.bazel), and `obb`/`profiling`/`benchmark`, which are plain
+# executables (not Boost.Test) that reach into coal's private src/ headers
+# rather than the public include/ API.
+# ---------------------------------------------------------------------------
+
+coal_test(name = "math")
+coal_test(name = "collision")
+coal_test(name = "contact_patch")
+coal_test(name = "distance")
+coal_test(name = "swept_sphere_radius")
+coal_test(name = "normal_and_nearest_points")
+coal_test(name = "distance_lower_bound")
+coal_test(name = "security_margin")
+coal_test(name = "geometric_shapes")
+coal_test(name = "shape_inflation")
+coal_test(name = "polygon_convex_hull")
+coal_test(name = "patch_simplifier")
+coal_test(name = "gjk_asserts")
+
+# CMake sets a 7200s TIMEOUT property on this test.
+coal_test(name = "frontlist", timeout = "eternal")
+
+coal_test(name = "capsule_capsule")
+coal_test(name = "box_box_distance")
+coal_test(name = "box_box_collision")
+coal_test(name = "simple")
+coal_test(name = "capsule_box_1")
+coal_test(name = "capsule_box_2")
+coal_test(name = "convex")
+coal_test(name = "bvh_models")
+coal_test(name = "collision_node_asserts")
+coal_test(name = "hfields")
+coal_test(name = "gjk")
+coal_test(name = "accelerated_gjk")
+coal_test(name = "gjk_convergence_criterion")
+coal_test(name = "serialization")
+coal_test(name = "alloca")
+
+coal_test(name = "broadphase_dynamic_AABB_tree")
+coal_test(name = "broadphase_collision_1")
+coal_test(name = "broadphase_collision_2")
+
+# `broadphase` is registered in CMake with `set_tests_properties(... WILL_FAIL
+# TRUE)`: it is a known-failing test (see the comment at the top of
+# test/broadphase.cpp / the FIXME in its BOOST_AUTO_TEST_CASE). Build it as a
+# plain binary and wrap it in an sh_test that expects a non-zero exit code,
+# to keep it exercised by `bazel test //...` without failing the build.
+cc_binary(
+    name = "coal-broadphase_bin",
+    testonly = True,
+    srcs = ["broadphase.cpp", ":gen_fcl_resources_config_hh"],
+    includes = ["."],
+    copts = select({
+        "@platforms//os:windows": [],
+        "//conditions:default": ["-Wno-c99-extensions"],
+    }),
+    data = [":fcl_resources_data"],
+    deps = [
+        ":utility",
+        "//:coal",
+        "@boost.filesystem",
+        "@boost.test//:boost.test",
+    ],
+)
+
+sh_test(
+    name = "coal-broadphase",
+    srcs = ["expect_test_failure.sh"],
+    args = ["$(location :coal-broadphase_bin)"],
+    data = [":coal-broadphase_bin"],
+)

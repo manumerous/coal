@@ -7,6 +7,7 @@ module(
 bazel_dep(name = "rules_cc", version = "0.2.25")
 bazel_dep(name = "platforms", version = "1.1.0")
 bazel_dep(name = "bazel_skylib", version = "1.9.2")
+bazel_dep(name = "rules_shell", version = "0.6.1", dev_dependency = True)
 
 # Linear algebra.
 bazel_dep(name = "eigen", version = "3.4.1.bcr.1")
@@ -35,3 +36,9 @@ bazel_dep(name = "boost.assert", version = "1.90.0.bcr.1")
 bazel_dep(name = "boost.log", version = "1.90.0.bcr.1")
 bazel_dep(name = "octomap", version = "1.10.0")
 bazel_dep(name = "qhull", version = "8.0.2.bcr.2")
+
+# Test-only dependencies. Boost.Test is used via the "included" header-only
+# variant by the //test:* unit tests; boost.assign is used directly by a
+# couple of test sources (boost/assign/list_of.hpp).
+bazel_dep(name = "boost.test", version = "1.90.0.bcr.1", dev_dependency = True)
+bazel_dep(name = "boost.assign", version = "1.90.0.bcr.1", dev_dependency = True)
