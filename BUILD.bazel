@@ -6,6 +6,11 @@ package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])  # BSD-3-Clause
 
+# Referenced from the vendored @nanoeigenpy repo (see
+# third_party/nanoeigenpy.BUILD); implicit file targets need an explicit
+# exports_files() to be visible outside their own package.
+exports_files(["third_party/nanoeigenpy_config.hpp"])
+
 # ---------------------------------------------------------------------------
 # Build options
 #
