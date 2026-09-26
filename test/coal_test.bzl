@@ -24,6 +24,7 @@ def coal_test(name, timeout = None, extra_deps = [], **kwargs):
             "@boost.test//:boost.test",
         ] + extra_deps,
         data = [":fcl_resources_data"],
+        linkstatic = True,
         # Mirrors test/CMakeLists.txt's `include_directories(${CMAKE_CURRENT_BINARY_DIR})`:
         # generated fcl_resources/config.h is included as a package-relative
         # quoted path, so the package's bindir needs to be on the include path.

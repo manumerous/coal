@@ -121,6 +121,7 @@ cc_binary(
         "@boost.filesystem",
         "@boost.test//:boost.test",
     ],
+    linkstatic = True,
 )
 
 sh_test(
