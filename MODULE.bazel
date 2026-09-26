@@ -1,0 +1,88 @@
+module(
+    name = "coal",
+    version = "3.0.4",
+)
+
+bazel_dep(name = "rules_cc", version = "0.2.25")
+bazel_dep(name = "platforms", version = "1.1.0")
+bazel_dep(name = "bazel_skylib", version = "1.9.2")
+bazel_dep(name = "rules_shell", version = "0.6.1", dev_dependency = True)
+
+# Linear algebra.
+bazel_dep(name = "eigen", version = "3.4.1.bcr.1")
+
+# Mesh loading (required).
+bazel_dep(name = "assimp", version = "6.0.5")
+
+# Boost pieces actually used by the core library (see coal_HAS_* flags
+# below for the ones that are only needed when an optional feature is
+# turned on).
+bazel_dep(name = "boost.serialization", version = "1.90.0.bcr.1")
+bazel_dep(name = "boost.filesystem", version = "1.90.0.bcr.1")
+bazel_dep(name = "boost.asio", version = "1.90.0.bcr.1")
+bazel_dep(name = "boost.iostreams", version = "1.90.0.bcr.2")
+bazel_dep(name = "boost.math", version = "1.90.0.bcr.1")
+bazel_dep(name = "boost.core", version = "1.90.0.bcr.1")
+bazel_dep(name = "boost.assert", version = "1.90.0.bcr.1")
+
+# Optional dependencies. These are only pulled in (fetched) when the
+# corresponding coal_HAS_*/COAL_* bool_flag is flipped on; by default
+# every one of these features is OFF, mirroring the upstream CMake
+# defaults. Tracy is intentionally not ported: see the COAL_BUILD_WITH_TRACY
+# flag in BUILD.bazel, which is kept for interface parity with the CMake
+# build but is not wired to an actual dependency.
+bazel_dep(name = "boost.log", version = "1.90.0.bcr.1")
+bazel_dep(name = "octomap", version = "1.10.0")
+bazel_dep(name = "qhull", version = "8.0.2.bcr.2")
+
+# Test-only dependencies. Boost.Test is used via the "included" header-only
+# variant by the //test:* unit tests; boost.assign is used directly by a
+# couple of test sources (boost/assign/list_of.hpp).
+bazel_dep(name = "boost.test", version = "1.90.0.bcr.1", dev_dependency = True)
+bazel_dep(name = "boost.assign", version = "1.90.0.bcr.1", dev_dependency = True)
+
+# Python bindings (//python-nb), nanobind-based (COAL_PYTHON_NANOBIND in
+# CMake). The legacy Boost.Python + eigenpy bindings (//python in CMake) are
+# not ported here.
+bazel_dep(name = "nanobind_bazel", version = "2.9.2")
+bazel_dep(name = "rules_python", version = "2.3.4")
+
+python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+python.toolchain(
+    is_default = True,
+    python_version = "3.12",
+)
+use_repo(python, "python_3_12")
+
+# Opt in to rules_python's upcoming default: don't synthesize __init__.py
+# files for our py_* targets (see //python-nb:BUILD.bazel).
+rules_python_config = use_extension("@rules_python//python/extensions:config.bzl", "config")
+rules_python_config.explicit_init_py(default = True)
+
+# NumPy is a hard runtime dependency of //python-nb:coal: nanobind's Eigen
+# support (nanobind/eigen/dense.h) exports nb::ndarray types eagerly at
+# module-init time, so the extension fails to import without it. Version
+# pin mirrors numpy's constraint in pixi.toml.
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
+pip.parse(
+    hub_name = "coal_pip",
+    python_version = "3.12",
+    requirements_lock = "//python-nb:requirements.txt",
+)
+use_repo(pip, "coal_pip")
+
+# nanoeigenpy (https://github.com/Simple-Robotics/nanoeigenpy) is a
+# header-only-for-our-purposes nanobind/Eigen support library used by
+# //python-nb. It isn't in the Bazel Central Registry, so it's vendored here
+# directly from its GitHub release tarball; see third_party/nanoeigenpy.BUILD
+# and third_party/nanoeigenpy_config.hpp for details on what had to be
+# special-cased to build it without its own CMake/jrl-cmakemodules setup.
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "nanoeigenpy",
+    build_file = "//:third_party/nanoeigenpy.BUILD",
+    sha256 = "e741b00523bfde62bce60a755791a0ab0b83c409a862a693b61ba855f4af70c0",
+    strip_prefix = "nanoeigenpy-0.5.0",
+    urls = ["https://github.com/Simple-Robotics/nanoeigenpy/archive/refs/tags/v0.5.0.tar.gz"],
+)

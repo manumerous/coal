@@ -153,16 +153,8 @@ struct DistanceRes {
   Vec3s p2;
 };
 
-/// @brief Default collision callback for two objects o1 and o2 in broad phase.
-/// return value means whether the broad phase can stop now.
-bool defaultCollisionFunction(CollisionObject* o1, CollisionObject* o2,
-                              void* cdata);
-
-/// @brief Default distance callback for two objects o1 and o2 in broad phase.
-/// return value means whether the broad phase can stop now. also return dist,
-/// i.e. the bmin distance till now
-bool defaultDistanceFunction(CollisionObject* o1, CollisionObject* o2,
-                             void* cdata, Scalar& dist);
+// defaultCollisionFunction() and defaultDistanceFunction() are declared in
+// coal/broadphase/default_broadphase_callbacks.h, included above.
 
 std::string getNodeTypeName(NODE_TYPE node_type);
 
