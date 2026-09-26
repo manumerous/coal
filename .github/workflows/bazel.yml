@@ -16,6 +16,8 @@ jobs:
         os: [ubuntu, macos]
     steps:
       - uses: actions/checkout@v7
+        with:
+          submodules: true
       - uses: bazel-contrib/setup-bazel@0.14.0
         with:
           bazelisk-cache: true
