@@ -1,7 +1,6 @@
 module(
     name = "coal",
     version = "3.0.4",
-    compatibility_level = 1,
 )
 
 bazel_dep(name = "rules_cc", version = "0.2.25")
@@ -54,6 +53,11 @@ python.toolchain(
     python_version = "3.12",
 )
 use_repo(python, "python_3_12")
+
+# Opt in to rules_python's upcoming default: don't synthesize __init__.py
+# files for our py_* targets (see //python-nb:BUILD.bazel).
+rules_python_config = use_extension("@rules_python//python/extensions:config.bzl", "config")
+rules_python_config.explicit_init_py(default = True)
 
 # NumPy is a hard runtime dependency of //python-nb:coal: nanobind's Eigen
 # support (nanobind/eigen/dense.h) exports nb::ndarray types eagerly at
