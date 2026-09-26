@@ -1,0 +1,78 @@
+load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
+load("@coal_pip//:requirements.bzl", "requirement")
+load("@nanobind_bazel//:build_defs.bzl", "nanobind_extension")
+load("@rules_python//python:py_library.bzl", "py_library")
+load("@rules_python//python:py_test.bzl", "py_test")
+
+package(default_visibility = ["//visibility:private"])
+
+licenses(["notice"])  # BSD-3-Clause
+
+# Mirrors PYTHON_LIB_SOURCES/PYTHON_LIB_HEADERS in python-nb/CMakeLists.txt,
+# for PYTHON_LIB_NAME_V2 = coal_pywrap_nb.
+COAL_PYWRAP_NB_SOURCES = [
+    "aabb.cc",
+    "broadphase/broadphase.cc",
+    "bvh.cc",
+    "collision-geometries.cc",
+    "collision.cc",
+    "contact_patch.cc",
+    "distance.cc",
+    "gjk.cc",
+    "height_field.cc",
+    "math.cc",
+    "memory-footprint.cc",
+    "module.cc",
+    "shapes.cc",
+] + select({
+    "//:octomap_enabled": ["octree.cc"],
+    "//conditions:default": [],
+})
+
+COAL_PYWRAP_NB_HEADERS = [
+    "broadphase/broadphase_callbacks_collision_manager.hh",
+    "fwd.h",
+    "pickle.hh",
+    "serializable.hh",
+]
+
+nanobind_extension(
+    name = "coal_pywrap_nb",
+    srcs = COAL_PYWRAP_NB_SOURCES + COAL_PYWRAP_NB_HEADERS,
+    local_defines = ["COAL_PYTHON_LIBNAME=coal_pywrap_nb"],
+    deps = [
+        "//:coal",
+        "@boost.serialization",
+        "@nanoeigenpy",
+    ],
+)
+
+# Places the built extension inside the "coal" package directory, next to
+# coal/__init__.py -- mirrors python-nb/CMakeLists.txt setting
+# LIBRARY_OUTPUT_DIRECTORY to <build>/coal for this target.
+copy_file(
+    name = "coal_pywrap_nb_in_package",
+    src = ":coal_pywrap_nb",
+    out = "coal/coal_pywrap_nb.so",
+)
+
+py_library(
+    name = "coal",
+    srcs = [
+        "coal/__init__.py",
+        "coal/windows_dll_manager.py",
+    ],
+    data = [":coal_pywrap_nb_in_package"],
+    imports = ["."],
+    visibility = ["//visibility:public"],
+    # Not imported from Python here, but coal_pywrap_nb.so does `import
+    # numpy` internally at module-init time (nanobind's Eigen/ndarray
+    # support), so numpy must be on sys.path at runtime.
+    deps = [requirement("numpy")],
+)
+
+py_test(
+    name = "smoke_test",
+    srcs = ["smoke_test.py"],
+    deps = [":coal"],
+)

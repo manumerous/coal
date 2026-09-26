@@ -24,7 +24,7 @@ jobs:
           disk-cache: ${{ github.workflow }}-${{ matrix.os }}
           repository-cache: true
       - run: bazel build //...
-      - run: bazel test //test/... --test_output=errors
+      - run: bazel test //test/... //python-nb/... --test_output=errors
   check:
     if: always()
     name: check-bazel
